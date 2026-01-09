@@ -1,4 +1,4 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="bn" translate="no">
 <head>
     <meta charset="UTF-8">
@@ -436,7 +436,7 @@
                 
                 // আইকন সিলেকশন: বট হলে রোবট, অন্যথায় টেলিগ্রাম প্লেন
                 let iconClass = task.type === 'bot' ? 'fa-solid fa-robot' : 'fa-brands fa-telegram';
-                let desc = task.type === 'bot' ? 'Tap to Open & Send /start' : 'Tap to Join';
+                let desc = task.type === 'bot' ? 'Tap to Open & Send /start and write "Allah"' : 'Tap to Join';
 
                 div.onclick = () => handleTaskClick(index, task.link, task.type);
                 div.innerHTML = `
@@ -478,14 +478,23 @@
                         return status !== 'left' && status !== 'kicked';
                     }
                 } else if (taskType === 'bot') {
-                    // Check bot interaction
-                    const response = await fetch(`https://api.telegram.org/bot${botApiKey}/getChatMember`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: userId, user_id: userId })
-                    });
+                    // Check bot interaction - "Allah" শব্দটি লিখেছে কিনা
+                    // আমরা মনে করছি বটটি "Allah" লিখলে স্টোর করে এবং আমরা তা চেক করতে পারি
+                    // এখানে আমরা বটের মাধ্যমে ইউজার মেসেজ চেক করবো
+                    const response = await fetch(`https://api.telegram.org/bot${botApiKey}/getUpdates?offset=0&limit=100`);
                     const data = await response.json();
-                    return data.ok; 
+                    if (data.ok) {
+                        const updates = data.result;
+                        // শেষ ১০০ আপডেটের মধ্যে ইউজার আইডি মিলিয়ে "Allah" মেসেজ আছে কিনা চেক
+                        const userMessage = updates.find(up => 
+                            up.message && 
+                            up.message.from && 
+                            up.message.from.id == userId && 
+                            up.message.text && 
+                            up.message.text.toLowerCase().includes("allah")
+                        );
+                        return !!userMessage;
+                    }
                 }
                 return false;
             } catch (error) {
@@ -529,7 +538,7 @@
                 } else {
                     // ব্যর্থ হলে বড় লাল ক্রস (❌)
                     statusIcon.innerHTML = '<i class="fa-regular fa-circle-xmark cross-big"></i>';
-                    desc.innerText = taskType === 'bot' ? "Not Started!" : "Not Joined!";
+                    desc.innerText = taskType === 'bot' ? 'Write "Allah" in bot' : "Not Joined!";
                     desc.style.color = "var(--danger)";
                     card.classList.remove('disabled');
                     tg.HapticFeedback.notificationOccurred('error');
@@ -538,7 +547,7 @@
                     setTimeout(() => {
                         if(!completedTasks.has(index)) {
                             statusIcon.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
-                            desc.innerText = "Try Again";
+                            desc.innerText = taskType === 'bot' ? 'Tap to Open & Send /start and write "Allah"' : 'Tap to Join';
                             desc.style.color = "var(--text-secondary)";
                         }
                     }, 4000);
